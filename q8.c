@@ -2,161 +2,63 @@
 #include <stdlib.h>
 #include <gmp.h>
 
-// Extended Euclidean Algorithm to find multiplicative inverse
-void extended_euclidean(const mpz_t a, const mpz_t b, mpz_t x, mpz_t y) {
-    mpz_t old_r, r, old_s, s, old_t, t, quotient, temp;
-    mpz_inits(old_r, r, old_s, s, old_t, t, quotient, temp, NULL);
-
-    mpz_set(old_r, a);
-    mpz_set(r, b);
-    mpz_set_ui(old_s, 1);
-    mpz_set_ui(s, 0);
-    mpz_set_ui(old_t, 0);
-    mpz_set_ui(t, 1);
-
-    while (mpz_cmp_ui(r, 0) > 0) {
-        mpz_div(quotient, old_r, r);
-
-        // Update r
-        mpz_set(temp, r);
-        mpz_mod(r, old_r, r);
-        mpz_set(old_r, temp);
-
-        // Update s
-        mpz_set(temp, s);
-        mpz_mul(temp, quotient, s);
-        mpz_sub(s, old_s, temp);
-        mpz_set(old_s, temp);
-
-        // Update t
-        mpz_set(temp, t);
-        mpz_mul(temp, quotient, t);
-        mpz_sub(t, old_t, temp);
-        mpz_set(old_t, temp);
-    }
-
-    mpz_set(x, old_s);
-    mpz_set(y, old_t);
-
-    mpz_clears(old_r, r, old_s, s, old_t, t, quotient, temp, NULL);
-}
-
-// Function to calculate the CRT solution
-void crt_solution(const mpz_t *a, const mpz_t *b, const mpz_t *m, int n, mpz_t result) {
-    mpz_t M, x, y, temp, temp2;
-    mpz_inits(M, x, y, temp, temp2, NULL);
-
-    mpz_set_ui(result, 0);
-    mpz_set_ui(M, 1);
-
-    // Calculate M
-    for (int i = 0; i < n; i++) {
-        mpz_mul(M, M, m[i]);
-    }
-
-    // Calculate x_i and sum up the result
-    for (int i = 0; i < n; i++) {
-        mpz_divexact(temp, M, m[i]);
-        extended_euclidean(temp, m[i], x, y);
-        mpz_mul(temp, b[i], temp);
-        mpz_mul(temp, temp, x);
-        mpz_add(result, result, temp);
-    }
-
-    mpz_mod(result, result, M);
-
-    mpz_clears(M, x, y, temp, temp2, NULL);
-}
-
-// Function to check if there exists a common solution
-int has_common_solution(const mpz_t *a, const mpz_t *b, const mpz_t *m, int n) {
-    // Check if the moduli are pairwise coprime
-    for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
-            mpz_t g;
-            mpz_init(g);
-            mpz_gcd(g, m[i], m[j]);
-            if (mpz_cmp_ui(g, 1) != 0) {
-                mpz_clear(g);
-                return 0; // Moduli are not pairwise coprime
-            }
-            mpz_clear(g);
+// Function to calculate the modular inverse of a (mod m)
+int mod_inverse(int a, int m) {
+    a = a % m;
+    for (int x = 1; x < m; x++) {
+        if ((a * x) % m == 1) {
+            return x;
         }
     }
-
-    // Calculate the CRT solution
-    mpz_t result;
-    mpz_init(result);
-    crt_solution(a, b, m, n, result);
-
-    // Check if the solution satisfies all congruences
-    for (int i = 0; i < n; i++) {
-        mpz_t temp;
-        mpz_init(temp);
-        mpz_mod(temp, result, m[i]);
-        if (mpz_cmp(temp, b[i]) != 0) {
-            mpz_clear(result);
-            mpz_clear(temp);
-            return 0; // Solution does not satisfy all congruences
-        }
-        mpz_clear(temp);
-    }
-
-    mpz_clear(result);
-    return 1; // Common solution exists
+    return -1; // Inverse does not exist
 }
 
-// Function to print all the solutions
-void print_solutions(const mpz_t *a, const mpz_t *b, const mpz_t *m, int n) {
-    // Calculate the CRT solution
-    mpz_t result;
-    mpz_init(result);
-    crt_solution(a, b, m, n, result);
-
-    // Print the solution
-    gmp_printf("Common solution x satisfying the system of congruences:\n");
-    gmp_printf("x ≡ %Zd (mod ", result);
+// Function to solve the system of congruences
+void solve_congruences(int n, int *a, int *b, int *m) {
+    int M = 1;
     for (int i = 0; i < n; i++) {
-        gmp_printf("%Zd", m[i]);
-        if (i < n - 1) {
-            printf(", ");
-        }
+        M *= m[i];
     }
-    printf(")\n");
 
-    mpz_clear(result);
+    int x = 0;
+    for (int i = 0; i < n; i++) {
+        int Mi = M / m[i];
+        int Mi_inv = mod_inverse(Mi, m[i]);
+        if (Mi_inv == -1) {
+            printf("No common solution exists.\n");
+            return;
+        }
+        x += b[i] * Mi * Mi_inv;
+    }
+
+    printf("Common solution x satisfying the system of congruences: %d\n", x % M);
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 4 || (argc - 1) % 3 != 0) {
-        printf("Usage: %s ai bi mi [ai bi mi ...]\n", argv[0]);
+    if (argc < 2 || (argc - 2) % 3 != 0) {
+        printf("Usage: %s n ai bi mi [ai bi mi ...]\n", argv[0]);
         return 1;
     }
 
-    int n = (argc - 1) / 3;
-    mpz_t *a, *b, *m;
-    a = (mpz_t *)malloc(n * sizeof(mpz_t));
-    b = (mpz_t *)malloc(n * sizeof(mpz_t));
-    m = (mpz_t *)malloc(n * sizeof(mpz_t));
+    int n = atoi(argv[1]);
+    if ((argc - 2) / 3 != n) {
+        printf("Number of pairs does not match n.\n");
+        return 1;
+    }
 
-    // Parse command line arguments
+    int *a, *b, *m;
+    a = (int *)malloc(n * sizeof(int));
+    b = (int *)malloc(n * sizeof(int));
+    m = (int *)malloc(n * sizeof(int));
+
     for (int i = 0; i < n; i++) {
-        mpz_inits(a[i], b[i], m[i], NULL);
-        mpz_set_str(a[i], argv[i * 3 + 1], 10);
-        mpz_set_str(b[i], argv[i * 3 + 2], 10);
-        mpz_set_str(m[i], argv[i * 3 + 3], 10);
+        a[i] = atoi(argv[i * 3 + 2]);
+        b[i] = atoi(argv[i * 3 + 3]);
+        m[i] = atoi(argv[i * 3 + 4]);
     }
 
-    if (has_common_solution(a, b, m, n)) {
-        print_solutions(a, b, m, n);
-    } else {
-        printf("No common solution exists.\n");
-    }
+    solve_congruences(n, a, b, m);
 
-    // Free allocated memory
-    for (int i = 0; i < n; i++) {
-        mpz_clears(a[i], b[i], m[i], NULL);
-    }
     free(a);
     free(b);
     free(m);
