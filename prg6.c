@@ -12,7 +12,7 @@ void multiplicative_inverse(const mpz_t a, const mpz_t m) {
 
     // Check if gcd(a, m) equals 1 (i.e., a and m are coprime)
     if (mpz_cmp_ui(gcd, 1) == 0) {
-        printf("Y ");
+        printf("Y");
 
         // Compute the multiplicative inverse of a modulo m
         mpz_t inv;
@@ -20,7 +20,7 @@ void multiplicative_inverse(const mpz_t a, const mpz_t m) {
         mpz_invert(inv, a, m);
 
         // Print the multiplicative inverse
-        gmp_printf("%Zd ", inv);
+        gmp_printf(" %Zd", inv);
 
         // Clear memory
         mpz_clear(inv);

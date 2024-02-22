@@ -22,17 +22,25 @@ int main(int argc, char *argv[]) {
     mpz_set_ui(product, 1);
 
     int target = atoi(argv[1]);
+    int printed = 0; // Flag to track if anything has been printed
 
     for (int i = 2; i <= target; i++) {
         if (is_prime(i)) {
             while (target % i == 0) {
-                printf("%d ", i);
+                if (printed) {
+                    printf(" "); // Print space only if something has been printed before
+                }
+                printf("%d", i);
+                printed = 1;
                 target /= i;
             }
         }
     }
 
     if (target > 1) {
+        if (printed) {
+            printf(" "); // Print space only if something has been printed before
+        }
         printf("%d", target); // Print the remaining factor if it's prime
     }
 
