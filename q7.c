@@ -41,7 +41,6 @@ void find_solutions(const mpz_t a, const mpz_t b, const mpz_t m) {
 
     // If a and m are not coprime and b is not divisible by their gcd, there are no solutions
     if (!are_coprime(a, m) && mpz_divisible_p(b, g) == 0) {
-        printf("N\n");
         mpz_clear(g);
         return;
     }
